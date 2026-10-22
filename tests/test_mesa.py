@@ -43,7 +43,7 @@ def test_ticker_valido(entrada, esperado):
     assert pl.normalizar_ticker(entrada) == esperado
 
 
-@pytest.mark.parametrize("entrada", ["", "AAPL; rm -rf", "ACCIONMUYLARGAXYZ"])
+@pytest.mark.parametrize("entrada", ["", "AAPL; rm -rf", "ACCIONMUYLARGAXYZ", "...", "-", "123"])
 def test_ticker_invalido(entrada):
     with pytest.raises(ValueError):
         pl.normalizar_ticker(entrada)
@@ -149,3 +149,50 @@ def test_vera_esceptica_dice_lo_que_los_datos_no_dicen():
     real = {"ficha": {"fuente": "Alpha Vantage vía MCP"}, "indicadores": {"cambio_pct": -0.8}}
     assert "no es una tendencia" in agentes.lo_que_no_dicen(real)           # con datos reales
     assert nota.endswith(agentes.DESCARGO)                                  # el descargo sigue al final
+
+
+# ----------------------------------------------------------------------
+# Recomendaciones de seguridad aplicadas
+# ----------------------------------------------------------------------
+def test_iris_sin_herramientas_no_etiqueta_datos_como_reales(monkeypatch):
+    """Si Claude responde sin consultar Alpha Vantage, sus cifras no se presentan como reales."""
+    monkeypatch.setattr(config, "MODO_SIMULACION", False)
+    monkeypatch.setattr(agentes, "llamar_claude", lambda *a, **k: ('{"precio": 999}', []))
+    ficha, herramientas = agentes.agente_recolector("AAPL")
+    assert "DEMO" in ficha["fuente"] and ficha["precio"] != 999 and herramientas == []
+
+
+def test_euler_usa_respaldo_si_claude_falla(monkeypatch):
+    monkeypatch.setattr(config, "MODO_SIMULACION", False)
+
+    def falla(*a, **k):
+        raise ConnectionError("sin red")
+    monkeypatch.setattr(agentes, "llamar_claude", falla)
+    lectura = agentes.agente_analista({"precio": 150, "max_52s": 180, "min_52s": 120})["lectura"]
+    assert {"lectura_precio", "lectura_valuacion", "pregunta_para_investigar"} <= set(lectura)
+
+
+def test_precio_fuera_de_rango_genera_alerta():
+    ind = agentes.calcular_indicadores({"precio": 210, "max_52s": 200, "min_52s": 100})
+    assert ind["posicion_rango_52s_pct"] == 110.0 and ind["alerta_datos"]
+    assert agentes.calcular_indicadores({"precio": 150, "max_52s": 200, "min_52s": 100})["alerta_datos"] is None
+
+
+def test_bot_es_privado_aunque_falte_chat_id_en_modo_real(monkeypatch):
+    from mesa import telegram_io
+    monkeypatch.setattr(config, "TELEGRAM_CHAT_ID", "")
+    monkeypatch.setattr(config, "MODO_SIMULACION", False)
+    assert telegram_io.chat_autorizado(999) is False
+
+
+def test_errores_de_red_no_muestran_el_token(monkeypatch):
+    import requests
+    from mesa import telegram_io
+    monkeypatch.setattr(config, "TELEGRAM_BOT_TOKEN", "123:TOKEN-SECRETO")
+
+    def red_caida(url, **k):
+        raise requests.ConnectionError(f"Max retries exceeded with url: {url}")
+    monkeypatch.setattr(requests, "get", red_caida)
+    with pytest.raises(requests.ConnectionError) as error:
+        telegram_io.verificar_bot()
+    assert "TOKEN-SECRETO" not in str(error.value) and "***" in str(error.value)

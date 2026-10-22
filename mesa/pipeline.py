@@ -9,7 +9,8 @@ from datetime import datetime, timezone
 from . import config
 from .agentes import agente_analista, agente_comunicador, agente_recolector
 
-PATRON_TICKER = re.compile(r"[A-Z0-9.\-]{1,12}")
+# Letras, números, punto o guion (máx. 12) y al menos una letra: "..." o "-" no gastan una consulta
+PATRON_TICKER = re.compile(r"(?=.*[A-Z])[A-Z0-9.\-]{1,12}")
 
 
 def normalizar_ticker(texto):

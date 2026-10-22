@@ -1,6 +1,6 @@
 """Interpreta los mensajes que el alumno escribe en Telegram (lo comparten el bot continuo y GitHub Actions)."""
 from .pipeline import normalizar_ticker, pipeline
-from .telegram_io import chat_autorizado, enviar
+from .telegram_io import chat_autorizado, enviar, ocultar_llaves
 
 AYUDA = ("🤖 Mesa Financiera de 3 agentes\n"
          "/analiza TICKER → ejemplo: /analiza AAPL\n"
@@ -38,4 +38,5 @@ def atender(mensaje):
     except Exception as error:
         enviar(chat_id, f"⚠️ No pude completar el análisis ({type(error).__name__}). "
                         "Revisa llaves y saldo, o intenta en unos minutos.")
-        raise
+        # Seguridad: el error se registra en pantalla o en Actions, pero sin ninguna llave
+        raise RuntimeError(ocultar_llaves(f"{type(error).__name__}: {error}")) from None
