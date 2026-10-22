@@ -23,6 +23,8 @@ def _bandera(nombre, defecto="0"):
 TELEGRAM_BOT_TOKEN   = _texto("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID     = _texto("TELEGRAM_CHAT_ID")        # tu chat; el bot solo atiende a este chat
 ANTHROPIC_API_KEY    = _texto("ANTHROPIC_API_KEY")
+# Opcional: solo si tu llave de Claude NO está asignada a un workspace (error 400 "not scoped to a workspace")
+ANTHROPIC_WORKSPACE_ID = _texto("ANTHROPIC_WORKSPACE_ID")
 ALPHAVANTAGE_API_KEY = _texto("ALPHAVANTAGE_API_KEY")
 
 MODELO     = _texto("MODELO", "claude-haiku-5-5")        # modelo rápido y económico
@@ -44,6 +46,7 @@ def resumen():
         "TELEGRAM_CHAT_ID": estado(TELEGRAM_CHAT_ID),
         "ANTHROPIC_API_KEY": estado(ANTHROPIC_API_KEY),
         "ALPHAVANTAGE_API_KEY": estado(ALPHAVANTAGE_API_KEY),
+        "ANTHROPIC_WORKSPACE_ID": estado(ANTHROPIC_WORKSPACE_ID) + " (opcional)",
         "MODELO": MODELO,
         "MODO_SIMULACION": "sí" if MODO_SIMULACION else "no (datos y agentes reales)",
     }

@@ -24,7 +24,10 @@ def _cliente_claude():
     global _cliente
     if _cliente is None:
         import anthropic
-        _cliente = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
+        # Si la llave no está asignada a un workspace, la API exige este encabezado con su ID
+        encabezados = ({"anthropic-workspace-id": config.ANTHROPIC_WORKSPACE_ID}
+                       if config.ANTHROPIC_WORKSPACE_ID else None)
+        _cliente = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY, default_headers=encabezados)
     return _cliente
 
 
@@ -234,7 +237,12 @@ def nota_simulada(analisis):
 def agente_comunicador(analisis):
     if config.MODO_SIMULACION:
         return nota_simulada(analisis)
-    texto, _ = llamar_claude(PROMPT_COMUNICADOR, json.dumps(analisis, ensure_ascii=False), max_tokens=600)
+    try:
+        texto, _ = llamar_claude(PROMPT_COMUNICADOR, json.dumps(analisis, ensure_ascii=False), max_tokens=600)
+    except Exception as error:
+        # Respaldo: si Claude falla, Vera arma la nota con reglas fijas para que la cadena termine
+        return nota_simulada(analisis).replace(
+            FIRMA_VERA, f"{FIRMA_VERA}\n(nota automática: Claude no respondió, {type(error).__name__})", 1)
     if DESCARGO not in texto:                      # garantía aunque el modelo lo olvide
         texto += f"\n\n{DESCARGO}"
     return f"{FIRMA_VERA}\n{texto}"

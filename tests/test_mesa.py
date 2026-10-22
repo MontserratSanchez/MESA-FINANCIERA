@@ -196,3 +196,26 @@ def test_errores_de_red_no_muestran_el_token(monkeypatch):
     with pytest.raises(requests.ConnectionError) as error:
         telegram_io.verificar_bot()
     assert "TOKEN-SECRETO" not in str(error.value) and "***" in str(error.value)
+
+
+def test_cliente_envia_workspace_si_esta_configurado(monkeypatch):
+    """Llaves sin workspace: la API exige el encabezado anthropic-workspace-id."""
+    import sys, types
+    capturado = {}
+    falso = types.SimpleNamespace(Anthropic=lambda **kw: capturado.update(kw) or "cliente")
+    monkeypatch.setitem(sys.modules, "anthropic", falso)
+    monkeypatch.setattr(agentes, "_cliente", None)
+    monkeypatch.setattr(config, "ANTHROPIC_WORKSPACE_ID", "wrkspc_prueba")
+    agentes._cliente_claude()
+    assert capturado["default_headers"] == {"anthropic-workspace-id": "wrkspc_prueba"}
+    monkeypatch.setattr(agentes, "_cliente", None)
+
+
+def test_vera_usa_respaldo_si_claude_falla(monkeypatch):
+    monkeypatch.setattr(config, "MODO_SIMULACION", False)
+
+    def falla(*a, **k):
+        raise ConnectionError("sin red")
+    monkeypatch.setattr(agentes, "llamar_claude", falla)
+    r = pl.pipeline("AAPL", avisar=lambda t: None)
+    assert "nota automática" in r["entrega_3_nota"] and r["entrega_3_nota"].endswith(agentes.DESCARGO)
