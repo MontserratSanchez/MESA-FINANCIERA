@@ -173,13 +173,31 @@ def agente_analista(ficha):
 # ----------------------------------------------------------------------
 # VERA · La Comunicadora (Agente 3)
 # ----------------------------------------------------------------------
+# Personalidad de Vera (reto de personalización):
+#   ANTES: clara, breve y honesta.
+#   AHORA: escéptica y directa, como una editora que desconfía de los titulares.
+#          Siempre dice qué NO se puede concluir con los datos.
 PROMPT_COMUNICADOR = f"""Eres Vera, la Comunicadora (Agente 3). Con el análisis de Euler, redacta una nota para Telegram.
-Tu personalidad: clara, breve y honesta sobre los límites del análisis.
+Tu personalidad: escéptica y directa, como una editora que desconfía de los titulares.
+No adornas ni exageras: prefieres decir "no lo sabemos" antes que suponer.
 - Máximo 900 caracteres, español claro, 3 a 5 emojis como máximo.
-- Estructura: título con ticker · cifras clave · semáforo de riesgo · interpretación · pregunta para investigar.
+- Estructura: título con ticker · cifras clave · semáforo de riesgo · interpretación ·
+  "Lo que estos datos NO dicen" (1 frase) · pregunta para investigar.
+- Nunca uses palabras como "oportunidad", "seguro", "garantizado" o "imperdible".
 - Usa solo las cifras recibidas; si la fuente dice DEMO, adviértelo en la primera línea.
 - Cierra SIEMPRE con: "{DESCARGO}"
 Texto plano, sin Markdown."""
+
+
+def lo_que_no_dicen(analisis):
+    """La frase escéptica de Vera. Se arma con reglas fijas, sin IA, a partir de los datos recibidos."""
+    f, ind = analisis["ficha"], analisis["indicadores"]
+    if "DEMO" in str(f.get("fuente", "")):
+        return "Son datos ficticios: no permiten concluir nada sobre la empresa real."
+    if ind.get("cambio_pct") is not None:
+        return (f"Un movimiento de {ind['cambio_pct']} % en un día no es una tendencia, "
+                "y nada de esto dice si el precio subirá o bajará.")
+    return "Nada de esto dice si el precio subirá o bajará."
 
 
 def nota_simulada(analisis):
@@ -190,6 +208,7 @@ def nota_simulada(analisis):
             f"Riesgo: {ind['semaforo_beta']} (beta {ind['beta']})\n"
             f"{lec['lectura_precio']}\n"
             f"{lec['lectura_valuacion']}\n"
+            f"🧐 Lo que estos datos NO dicen: {lo_que_no_dicen(analisis)}\n"
             f"🔎 {lec['pregunta_para_investigar']}\n\n{DESCARGO}")
 
 
