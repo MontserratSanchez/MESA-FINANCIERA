@@ -124,7 +124,7 @@ def test_revision_de_github_actions_atiende_y_confirma(monkeypatch):
 
 
 def test_revision_sin_token_termina_sin_error(monkeypatch, capsys):
-    """Una copia de la plantilla sin Secrets no debe marcar error en Actions cada 10 minutos."""
+    """Una copia de la plantilla sin Secrets no debe marcar error en Actions cada 8 minutos."""
     import revisar_telegram as rt
     monkeypatch.setattr(config, "TELEGRAM_BOT_TOKEN", "")
     rt.main()
@@ -139,3 +139,13 @@ def test_los_agentes_se_presentan_con_su_nombre():
     for nombre in ("Batuta", "Iris", "Euler", "Vera"):
         assert nombre in texto
     assert r["entrega_3_nota"].startswith(agentes.FIRMA_VERA)
+
+
+def test_vera_esceptica_dice_lo_que_los_datos_no_dicen():
+    """Reto de personalización: Vera ahora es escéptica y directa."""
+    assert "escéptica" in agentes.PROMPT_COMUNICADOR
+    nota = pl.pipeline("AAPL", avisar=lambda t: None)["entrega_3_nota"]
+    assert "Lo que estos datos NO dicen" in nota and "ficticios" in nota       # con datos DEMO
+    real = {"ficha": {"fuente": "Alpha Vantage vía MCP"}, "indicadores": {"cambio_pct": -0.8}}
+    assert "no es una tendencia" in agentes.lo_que_no_dicen(real)           # con datos reales
+    assert nota.endswith(agentes.DESCARGO)                                  # el descargo sigue al final
