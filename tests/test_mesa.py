@@ -219,3 +219,12 @@ def test_vera_usa_respaldo_si_claude_falla(monkeypatch):
     monkeypatch.setattr(agentes, "llamar_claude", falla)
     r = pl.pipeline("AAPL", avisar=lambda t: None)
     assert "nota automática" in r["entrega_3_nota"] and r["entrega_3_nota"].endswith(agentes.DESCARGO)
+
+
+def test_errores_de_agentes_se_registran_sin_llaves(monkeypatch, capsys):
+    monkeypatch.setattr(config, "ANTHROPIC_API_KEY", "sk-ant-SECRETA")
+    import sys
+    monkeypatch.setattr(sys, "stderr", sys.stdout)
+    agentes.registrar_error("Iris", ValueError("fallo con llave sk-ant-SECRETA"))
+    salida = capsys.readouterr().out
+    assert "Iris: ValueError" in salida and "SECRETA" not in salida

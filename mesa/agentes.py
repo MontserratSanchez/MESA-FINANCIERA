@@ -8,8 +8,10 @@
 Regla de oro: los números los calcula el código; la IA solo interpreta.
 """
 import json
+import sys
 
 from . import config
+from .telegram_io import ocultar_llaves
 
 DESCARGO = "Nota educativa, no es recomendación de inversión."
 FIRMA_VERA = "✍️ Vera · Comunicadora"
@@ -52,6 +54,11 @@ def llamar_claude(system, mensaje, usar_mcp=False, max_tokens=900):
     texto = "".join(b.text for b in respuesta.content if b.type == "text").strip()
     herramientas = [b.name for b in respuesta.content if b.type == "mcp_tool_use"]
     return texto, herramientas
+
+
+def registrar_error(agente, error):
+    """Muestra la causa del error en la terminal o en el registro de Actions (nunca en Telegram), sin llaves."""
+    print(f"⚠️ {agente}: {type(error).__name__}: {ocultar_llaves(error)}"[:600], file=sys.stderr)
 
 
 def extraer_json(texto):
@@ -113,6 +120,7 @@ def agente_recolector(ticker):
         ficha["fuente"] = "Alpha Vantage vía MCP"
         return ficha, herramientas
     except Exception as error:                     # MCP caído, cuota agotada o JSON inválido
+        registrar_error("Iris", error)
         return ficha_demo(ticker, f"MCP no disponible: {type(error).__name__}"), []
 
 
@@ -185,6 +193,7 @@ def agente_analista(ficha):
             texto, _ = llamar_claude(PROMPT_ANALISTA, entrada)
             lectura.update({k: v for k, v in extraer_json(texto).items() if k in lectura and v})
         except Exception as error:
+            registrar_error("Euler", error)
             lectura["respaldo"] = f"Lectura automática ({type(error).__name__})"
     return {"ficha": ficha, "indicadores": indicadores, "lectura": lectura}
 
@@ -240,6 +249,7 @@ def agente_comunicador(analisis):
     try:
         texto, _ = llamar_claude(PROMPT_COMUNICADOR, json.dumps(analisis, ensure_ascii=False), max_tokens=600)
     except Exception as error:
+        registrar_error("Vera", error)
         # Respaldo: si Claude falla, Vera arma la nota con reglas fijas para que la cadena termine
         return nota_simulada(analisis).replace(
             FIRMA_VERA, f"{FIRMA_VERA}\n(nota automática: Claude no respondió, {type(error).__name__})", 1)
