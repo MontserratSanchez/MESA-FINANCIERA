@@ -228,3 +228,20 @@ def test_errores_de_agentes_se_registran_sin_llaves(monkeypatch, capsys):
     agentes.registrar_error("Iris", ValueError("fallo con llave sk-ant-SECRETA"))
     salida = capsys.readouterr().out
     assert "Iris: ValueError" in salida and "SECRETA" not in salida
+
+
+def test_iris_sin_cifras_avisa_y_vera_nunca_manda_nota_vacia(monkeypatch):
+    """Alpha Vantage respondió sin cifras (límite de consultas) y Claude devolvió texto vacío."""
+    monkeypatch.setattr(config, "MODO_SIMULACION", False)
+
+    def claude_falso(system, mensaje, usar_mcp=False, max_tokens=900):
+        if usar_mcp:
+            return '{"precio": null, "max_52s": null, "min_52s": null}', ["GLOBAL_QUOTE"]
+        if "Analista" in system:
+            return '{"lectura_precio": "x"}', []
+        return "", []                                   # Vera recibe respuesta vacía
+    monkeypatch.setattr(agentes, "llamar_claude", claude_falso)
+    r = pl.pipeline("MSFT", avisar=lambda t: None)
+    assert "límite de consultas" in r["entrega_1_ficha"]["aviso"]
+    nota = r["entrega_3_nota"]
+    assert "nota automática" in nota and "límite de consultas" in nota and nota.endswith(agentes.DESCARGO)
