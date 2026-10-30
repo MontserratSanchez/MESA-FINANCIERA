@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tablero de Marketing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#FAF6F0;          /* blanco roto */
+    --surface:#FFFDF9;
+    --ink:#3B2A22;         /* texto principal, contraste alto */
+    --ink-soft:#6E5A4E;
+    --line:#E8DDD1;
+    --terra:#B5532F;       /* terracota principal */
+    --terra-dark:#8A3B1F;
+    --terra-mid:#D4835F;
+    --terra-light:#EFC9B4;
+    --terra-wash:#F7E6DC;
+    --muted:#C9BBAE;       /* gris cálido para lo no resaltado */
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,sans-serif}
+  .wrap{max-width:1280px;margin:0 auto;padding:28px 16px 48px}
+  header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:20px}
+  h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(26px,4vw,38px);margin:0;letter-spacing:-.01em}
+  h1 span{color:var(--terra)}
+  .sub{color:var(--ink-soft);margin:4px 0 0;max-width:60ch}
+  .badge{display:inline-block;background:var(--terra-wash);color:var(--terra-dark);border:1px solid var(--terra-light);border-radius:99px;padding:3px 10px;font-size:12px;font-weight:600}
+  h2{font-family:Fraunces,Georgia,serif;font-weight:500;font-size:18px;margin:0 0 2px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  .hint{color:var(--ink-soft);font-size:12.5px;margin:0 0 12px}
+
+  .filters{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:18px}
+  .filters label{display:flex;flex-direction:column;font-size:12px;font-weight:600;color:var(--ink-soft);gap:4px}
+  select,button{font:inherit;font-size:14px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+  select:focus,button:focus-visible{outline:2px solid var(--terra);outline-offset:1px}
+  button{cursor:pointer}
+  .btn{background:var(--terra);color:#fff;border-color:var(--terra)}
+  .btn:hover{background:var(--terra-dark)}
+  .btn-ghost:hover{background:var(--terra-wash)}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+  .kpi .lbl{font-size:12px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em}
+  .kpi .val{font-family:Fraunces,Georgia,serif;font-size:28px;font-weight:600;margin:4px 0 2px}
+  .kpi .delta{font-size:12.5px;color:var(--ink-soft)}
+  .up{color:var(--terra-dark);font-weight:600}
+  .down{color:var(--ink);font-weight:600}
+
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+  .c8{grid-column:span 8}.c4{grid-column:span 4}.c6{grid-column:span 6}.c12{grid-column:span 12}
+  @media (max-width:900px){.c8,.c4,.c6{grid-column:span 12}}
+  .chart-box{position:relative;height:280px}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  th{font-size:12px;color:var(--ink-soft);font-weight:600;cursor:pointer;user-select:none}
+  th:hover{color:var(--terra)}
+  .heat td{text-align:center;font-variant-numeric:tabular-nums}
+  .scroll{overflow-x:auto}
+
+  .insights{margin:0;padding:0;list-style:none;display:grid;gap:10px}
+  .insights li{border-left:3px solid var(--terra);padding:6px 12px;background:var(--terra-wash);border-radius:0 8px 8px 0;font-size:14px}
+  .tag{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-right:6px}
+  .tag.dato{color:var(--terra-dark)}.tag.inf{color:#7a5a2a}.tag.sup{color:var(--ink-soft)}
+
+  .padlet-embed{border-radius:10px!important}
+  .agent{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+  .agent a{color:var(--terra-dark);font-weight:600}
+  footer{margin-top:22px;font-size:12px;color:var(--ink-soft)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <span class="badge">Datos sintéticos · demo</span>
+      <h1>Desempeño de <span>campañas de marketing</span></h1>
+      <p class="sub">Exploración básica de inversión, conversiones e ingresos por canal y región. Filtra arriba o haz clic en una barra de canal para enfocarte en él.</p>
+    </div>
+    <button class="btn-ghost" id="dl">Descargar CSV filtrado</button>
+  </header>
+
+  <!-- Filtros -->
+  <section class="filters" aria-label="Filtros">
+    <label>Canal<select id="fCanal"></select></label>
+    <label>Región<select id="fRegion"></select></label>
+    <label>Desde<select id="fDesde"></select></label>
+    <label>Hasta<select id="fHasta"></select></label>
+    <button class="btn" id="reset">Restablecer</button>
+  </section>
+
+  <!-- KPIs -->
+  <section class="kpis" id="kpis"></section>
+
+  <section class="grid">
+    <div class="card c8">
+      <h2 id="tLinea">Ingresos vs. inversión por mes</h2>
+      <p class="hint">MXN · misma escala para ambas series</p>
+      <div class="chart-box"><canvas id="chLinea"></canvas></div>
+    </div>
+    <div class="card c4">
+      <h2 id="tCanal">ROAS por canal</h2>
+      <p class="hint">Ingresos ÷ inversión · línea punteada = punto de equilibrio (1.0) · clic para filtrar</p>
+      <div class="chart-box"><canvas id="chCanal"></canvas></div>
+    </div>
+
+    <div class="card c6">
+      <h2>Conversiones: región × canal</h2>
+      <p class="hint">Intensidad de color = volumen de conversiones (escala secuencial)</p>
+      <div class="scroll"><table class="heat" id="heat"></table></div>
+    </div>
+    <div class="card c6">
+      <h2>Inversión vs. ingresos por registro</h2>
+      <p class="hint">Cada punto = canal × región × mes · resaltado = canal seleccionado</p>
+      <div class="chart-box"><canvas id="chScatter"></canvas></div>
+    </div>
+
+    <div class="card c12">
+      <h2>Lectura automática del filtro actual</h2>
+      <p class="hint">Cada línea indica si es <b>dato</b> (calculado), <b>inferencia</b> (interpretación) o <b>supuesto</b>.</p>
+      <ul class="insights" id="insights"></ul>
+    </div>
+
+    <div class="card c12">
+      <h2>Resumen por canal</h2>
+      <p class="hint">Clic en un encabezado para ordenar</p>
+      <div class="scroll"><table id="tabla"></table></div>
+    </div>
+
+    <!-- Widget 1: Padlet -->
+    <div class="card c8">
+      <h2>Conceptos clave de marketing</h2>
+      <p class="hint">Muro colaborativo (Padlet)</p>
+      <div class="padlet-embed" style="border:1px solid rgba(0,0,0,0.1);border-radius:2px;box-sizing:border-box;overflow:hidden;position:relative;width:100%;background:#F4F4F4"><p style="padding:0;margin:0"><iframe src="https://padlet.com/a01800545/conceptos-clave-de-marketing-s025002eatxul6kq0xjd" frameborder="0" allow="camera;microphone;geolocation;display-capture;clipboard-write" style="width:100%;height:608px;display:block;padding:0;margin:0" title="Padlet: conceptos clave de marketing"></iframe></p></div>
+    </div>
+
+    <!-- Widget 2: ElevenLabs -->
+    <div class="card c4">
+      <h2>Asistente de voz</h2>
+      <p class="hint">Agente conversacional (ElevenLabs)</p>
+      <div class="agent">
+        <p style="margin:0">Pulsa el botón flotante del agente (esquina inferior derecha) para hablar con él sobre los conceptos del tablero.</p>
+        <elevenlabs-convai agent-id="agent_5001m67360kae29atxtjjvgrbvq3"></elevenlabs-convai>
+        <a href="https://elevenlabs.io/app/talk-to?agent_id=agent_5001m67360kae29atxtjjvgrbvq3&branch_id=agtbrch_4201m67362w3ea7vksp9g198d3h8" target="_blank" rel="noopener">Abrir el agente en una pestaña nueva →</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>Fuente: datos sintéticos generados en el navegador con semilla fija (reproducibles) · Periodo nov-2025 a oct-2026 · No representan resultados reales.</footer>
+</div>
+
+<!-- Loader oficial del widget de ElevenLabs -->
+<script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>
+
+<script>
+/* ---------- 1. Datos sintéticos (semilla fija) ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const rnd = mulberry32(2026);
+const MESES = ['2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07','2026-08','2026-09','2026-10'];
+const MES_LBL = ['nov 25','dic 25','ene 26','feb 26','mar 26','abr 26','may 26','jun 26','jul 26','ago 26','sep 26','oct 26'];
+const CANALES = {
+  'Email':          {inv:[18000,30000], cpm:25,  ctr:.035, cvr:.045, ticket:780},
+  'Redes sociales': {inv:[45000,80000], cpm:60,  ctr:.012, cvr:.022, ticket:690},
+  'SEO':            {inv:[25000,40000], cpm:15,  ctr:.040, cvr:.030, ticket:820},
+  'Pago por clic':  {inv:[60000,110000],cpm:110, ctr:.028, cvr:.035, ticket:900},
+  'Influencers':    {inv:[35000,70000], cpm:55,  ctr:.009, cvr:.018, ticket:740}
+};
+const REGIONES = {'CDMX':1.25,'Monterrey':1.0,'Guadalajara':0.95,'Puebla':0.7};
+const ESTAC = [1.05,1.35,0.85,0.9,0.95,1.0,1.05,0.95,1.0,1.0,1.05,1.1]; // dic alto (supuesto de temporada)
+
+const DATA = [];
+MESES.forEach((m,mi)=>{
+  for(const [c,p] of Object.entries(CANALES)){
+    for(const [r,rf] of Object.entries(REGIONES)){
+      const j = ()=>0.8+rnd()*0.4;
+      const inversion = Math.round((p.inv[0]+rnd()*(p.inv[1]-p.inv[0]))*rf/2);
+      const impresiones = Math.round(inversion/p.cpm*1000*j());
+      const clics = Math.round(impresiones*p.ctr*j());
+      const conversiones = Math.round(clics*p.cvr*j()*ESTAC[mi]);
+      const ingresos = Math.round(conversiones*p.ticket*j());
+      DATA.push({mes:m, mesIdx:mi, canal:c, region:r, inversion, impresiones, clics, conversiones, ingresos});
+    }
+  }
+});
+
+/* ---------- 2. Utilidades ---------- */
+const $ = id=>document.getElementById(id);
+const mxn = v=>v.toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0});
+const mxnK = v=> v>=1e6 ? '$'+(v/1e6).toFixed(2)+' M' : '$'+(v/1e3).toFixed(0)+' k';
+const num = v=>v.toLocaleString('es-MX');
+const pct = v=>(v*100).toFixed(2)+'%';
+const css = n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const C = {terra:css('--terra'),dark:css('--terra-dark'),mid:css('--terra-mid'),light:css('--terra-light'),muted:css('--muted'),ink:css('--ink'),soft:css('--ink-soft'),line:css('--line')};
+function sum(rows){const o={inversion:0,impresiones:0,clics:0,conversiones:0,ingresos:0};rows.forEach(r=>{for(const k in o)o[k]+=r[k]});
+  o.roas=o.inversion?o.ingresos/o.inversion:0; o.cpa=o.conversiones?o.inversion/o.conversiones:0; o.ctr=o.impresiones?o.clics/o.impresiones:0; o.cvr=o.clics?o.conversiones/o.clics:0; return o;}
+
+/* ---------- 3. Filtros ---------- */
+function fill(sel,opts,all){sel.innerHTML=(all?`<option value="">${all}</option>`:'')+opts.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
+fill($('fCanal'),Object.keys(CANALES).map(c=>[c,c]),'Todos');
+fill($('fRegion'),Object.keys(REGIONES).map(r=>[r,r]),'Todas');
+fill($('fDesde'),MESES.map((m,i)=>[i,MES_LBL[i]]));
+fill($('fHasta'),MESES.map((m,i)=>[i,MES_LBL[i]]));
+$('fHasta').value=11;
+const st = ()=>({canal:$('fCanal').value, region:$('fRegion').value, d:+$('fDesde').value, h:+$('fHasta').value});
+function filtrar(s,{ignorarCanal=false,d=s.d,h=s.h}={}){
+  return DATA.filter(r=>(ignorarCanal||!s.canal||r.canal===s.canal)&&(!s.region||r.region===s.region)&&r.mesIdx>=d&&r.mesIdx<=h);
+}
+['fCanal','fRegion','fDesde','fHasta'].forEach(id=>$(id).addEventListener('change',()=>{
+  if(+$('fDesde').value>+$('fHasta').value){ if(id==='fDesde')$('fHasta').value=$('fDesde').value; else $('fDesde').value=$('fHasta').value; }
+  render();
+}));
+$('reset').onclick=()=>{$('fCanal').value='';$('fRegion').value='';$('fDesde').value=0;$('fHasta').value=11;render();};
+
+/* ---------- 4. Gráficas ---------- */
+Chart.defaults.font.family='Inter, system-ui, sans-serif';
+Chart.defaults.color=C.soft;
+Chart.defaults.plugins.legend.labels.boxWidth=12;
+const grid={color:C.line}, noGrid={display:false};
+
+const chLinea=new Chart($('chLinea'),{type:'line',data:{labels:[],datasets:[
+  {label:'Ingresos',data:[],borderColor:C.terra,backgroundColor:C.terra,borderWidth:2.5,tension:.3,pointRadius:3},
+  {label:'Inversión',data:[],borderColor:C.muted,backgroundColor:C.muted,borderWidth:2,borderDash:[5,4],tension:.3,pointRadius:2}]},
+  options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${mxn(c.raw)}`}}},
+    scales:{y:{beginAtZero:true,grid,ticks:{callback:mxnK}},x:{grid:noGrid}}}});
+
+const equilibrio={id:'eq',afterDatasetsDraw(ch){const x=ch.scales.x.getPixelForValue(1),{top,bottom}=ch.chartArea,ctx=ch.ctx;
+  ctx.save();ctx.setLineDash([4,4]);ctx.strokeStyle=C.ink;ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,bottom);ctx.stroke();ctx.restore();}};
+const chCanal=new Chart($('chCanal'),{type:'bar',data:{labels:[],datasets:[{data:[],backgroundColor:[],borderRadius:6}]},
+  options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`ROAS ${c.raw.toFixed(2)}x`}}},
+    scales:{x:{beginAtZero:true,grid,ticks:{callback:v=>v+'x'}},y:{grid:noGrid}},
+    onClick:(e,els)=>{if(!els.length)return;const c=chCanal.data.labels[els[0].index];$('fCanal').value=$('fCanal').value===c?'':c;render();},
+    onHover:(e,els)=>{e.native.target.style.cursor=els.length?'pointer':'default'}},plugins:[equilibrio]});
+
+const chScatter=new Chart($('chScatter'),{type:'scatter',data:{datasets:[
+  {label:'Otros',data:[],backgroundColor:C.muted+'99',pointRadius:3.5},
+  {label:'Selección',data:[],backgroundColor:C.terra,pointRadius:4.5}]},
+  options:{maintainAspectRatio:false,plugins:{tooltip:{callbacks:{label:c=>`${c.raw.t}: inv. ${mxn(c.raw.x)} → ing. ${mxn(c.raw.y)}`}}},
+    scales:{x:{beginAtZero:true,title:{display:true,text:'Inversión (MXN)'},grid,ticks:{callback:mxnK}},
+            y:{beginAtZero:true,title:{display:true,text:'Ingresos (MXN)'},grid,ticks:{callback:mxnK}}}}});
+
+/* ---------- 5. Render ---------- */
+let sortKey='roas', sortDir=-1;
+function render(){
+  const s=st(), rows=filtrar(s), T=sum(rows);
+
+  // KPIs vs. periodo anterior de igual duración
+  const len=s.h-s.d+1, pd=s.d-len, ph=s.d-1;
+  const P = pd>=0 ? sum(filtrar(s,{d:pd,h:ph})) : null;
+  const k=[['Inversión',T.inversion,mxn,'inversion',false],['Ingresos',T.ingresos,mxn,'ingresos',true],['Conversiones',T.conversiones,num,'conversiones',true],
+           ['ROAS',T.roas,v=>v.toFixed(2)+'x','roas',true],['Costo por conversión',T.cpa,mxn,'cpa',false],['CTR',T.ctr,pct,'ctr',true]];
+  $('kpis').innerHTML=k.map(([l,v,f,key])=>{
+    let d='<span>Sin periodo anterior comparable</span>';
+    if(P&&P[key]){const ch=(v-P[key])/P[key];d=`<span class="${ch>=0?'up':'down'}">${ch>=0?'▲':'▼'} ${Math.abs(ch*100).toFixed(1)}%</span> vs. ${len} ${len>1?'meses':'mes'} previos`;}
+    return `<div class="card kpi"><div class="lbl">${l}</div><div class="val">${f(v)}</div><div class="delta">${d}</div></div>`}).join('');
+
+  // Línea mensual
+  const idx=[];for(let i=s.d;i<=s.h;i++)idx.push(i);
+  const byM=idx.map(i=>sum(rows.filter(r=>r.mesIdx===i)));
+  chLinea.data.labels=idx.map(i=>MES_LBL[i]);
+  chLinea.data.datasets[0].data=byM.map(m=>m.ingresos);
+  chLinea.data.datasets[1].data=byM.map(m=>m.inversion);
+  const best=byM.reduce((a,m,i)=>m.ingresos>a.v?{v:m.ingresos,i}:a,{v:-1,i:0});
+  $('tLinea').textContent= idx.length>1 ? `Los ingresos alcanzan su máximo en ${MES_LBL[idx[best.i]]}` : 'Ingresos vs. inversión del mes';
+  chLinea.update();
+
+  // ROAS por canal (ignora filtro de canal para poder comparar; resalta el seleccionado)
+  const rowsAll=filtrar(s,{ignorarCanal:true});
+  const can=Object.keys(CANALES).map(c=>({c,...sum(rowsAll.filter(r=>r.canal===c))})).sort((a,b)=>b.roas-a.roas);
+  chCanal.data.labels=can.map(x=>x.c);
+  chCanal.data.datasets[0].data=can.map(x=>x.roas);
+  chCanal.data.datasets[0].backgroundColor=can.map((x,i)=> s.canal ? (x.c===s.canal?C.terra:C.muted) : (i===0?C.terra:C.light));
+  $('tCanal').textContent=`${can[0].c} lidera en ROAS (${can[0].roas.toFixed(2)}x)`;
+  chCanal.update();
+
+  // Heatmap región × canal
+  const regs=s.region?[s.region]:Object.keys(REGIONES), cans=Object.keys(CANALES);
+  const vals=regs.map(r=>cans.map(c=>sum(rowsAll.filter(x=>x.region===r&&x.canal===c)).conversiones));
+  const mx=Math.max(1,...vals.flat());
+  const lerp=(a,b,t)=>Math.round(a+(b-a)*t);
+  const shade=t=>{const a=[247,230,220],b=[138,59,31];return `rgb(${lerp(a[0],b[0],t)},${lerp(a[1],b[1],t)},${lerp(a[2],b[2],t)})`};
+  $('heat').innerHTML='<tr><th></th>'+cans.map(c=>`<th style="text-align:center;cursor:default">${c}</th>`).join('')+'</tr>'+
+    regs.map((r,ri)=>'<tr><td><b>'+r+'</b></td>'+vals[ri].map((v,ci)=>{const t=v/mx;
+      const dim=s.canal&&cans[ci]!==s.canal;
+      return `<td style="background:${shade(t)};color:${t>.55?'#fff':C.ink};opacity:${dim?.35:1}">${num(v)}</td>`}).join('')+'</tr>').join('');
+
+  // Dispersión
+  const pts=rowsAll.map(r=>({x:r.inversion,y:r.ingresos,t:`${r.canal} · ${r.region} · ${MES_LBL[r.mesIdx]}`,c:r.canal}));
+  chScatter.data.datasets[0].data=pts.filter(p=>s.canal&&p.c!==s.canal);
+  chScatter.data.datasets[1].data=pts.filter(p=>!s.canal||p.c===s.canal);
+  chScatter.data.datasets[1].label=s.canal||'Todos los canales';
+  chScatter.update();
+
+  // Tabla
+  const tab=can.map(x=>({canal:x.c,inversion:x.inversion,ingresos:x.ingresos,conversiones:x.conversiones,roas:x.roas,cpa:x.cpa,ctr:x.ctr,cvr:x.cvr}));
+  tab.sort((a,b)=>(a[sortKey]>b[sortKey]?1:-1)*sortDir);
+  const cols=[['canal','Canal',v=>v],['inversion','Inversión',mxn],['ingresos','Ingresos',mxn],['conversiones','Conversiones',num],['roas','ROAS',v=>v.toFixed(2)+'x'],['cpa','Costo/conv.',mxn],['ctr','CTR',pct],['cvr','Tasa conv.',pct]];
+  $('tabla').innerHTML='<tr>'+cols.map(([k,l])=>`<th data-k="${k}">${l}${k===sortKey?(sortDir<0?' ↓':' ↑'):''}</th>`).join('')+'</tr>'+
+    tab.map(r=>`<tr style="${s.canal&&r.canal!==s.canal?'opacity:.45':''}">`+cols.map(([k,,f])=>`<td>${f(r[k])}</td>`).join('')+'</tr>').join('');
+  $('tabla').querySelectorAll('th').forEach(th=>th.onclick=()=>{const k=th.dataset.k;sortDir=k===sortKey?-sortDir:-1;sortKey=k;render();});
+
+  // Lectura automática (dato / inferencia / supuesto)
+  const worst=can[can.length-1], cpaMin=[...can].sort((a,b)=>a.cpa-b.cpa)[0];
+  const ins=[
+    ['dato',`Con el filtro actual se invirtieron ${mxn(T.inversion)} y se generaron ${mxn(T.ingresos)} (ROAS ${T.roas.toFixed(2)}x). Fuente: suma de los campos <i>inversion</i> e <i>ingresos</i> de ${rows.length} registros.`],
+    ['dato',`${can[0].c} tiene el ROAS más alto (${can[0].roas.toFixed(2)}x) y ${worst.c} el más bajo (${worst.roas.toFixed(2)}x). ${cpaMin.c} tiene el menor costo por conversión (${mxn(cpaMin.cpa)}).`],
+    ['inf', worst.roas<1 ? `${worst.c} no recupera su inversión en este periodo; es el primer candidato a revisión, pero la diferencia es correlacional: no prueba que el canal sea la causa.` :
+                           `Todos los canales superan el punto de equilibrio; reasignar presupuesto hacia ${can[0].c} podría mejorar el ROAS total, si su rendimiento no decrece al escalar (no verificable con estos datos).`],
+    ['sup','Los datos son sintéticos: estacionalidad (pico en diciembre), tickets promedio y tasas de conversión por canal fueron fijados al generar el ejemplo, no observados.']
+  ];
+  $('insights').innerHTML=ins.map(([t,x])=>`<li><span class="tag ${t}">${t==='inf'?'Inferencia':t==='sup'?'Supuesto':'Dato'}</span>${x}</li>`).join('');
+}
+
+/* ---------- 6. Descarga CSV ---------- */
+$('dl').onclick=()=>{
+  const rows=filtrar(st()), h=['mes','canal','region','inversion','impresiones','clics','conversiones','ingresos'];
+  const csv=[h.join(',')].concat(rows.map(r=>h.map(k=>r[k]).join(','))).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='marketing_sintetico_filtrado.csv';a.click();
+};
+
+render();
+</script>
+</body>
+</html>
