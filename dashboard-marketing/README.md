@@ -7,3 +7,6 @@ Tablero interactivo en un solo archivo (`index.html`) para un análisis explorat
 - **Widgets incrustados:** muro de Padlet "Conceptos clave de marketing" y agente de voz de ElevenLabs (`agent_5001m67360kae29atxtjjvgrbvq3`).
 
 Ábrelo desde GitHub Pages (https) para que el agente de voz cargue correctamente.
+
+## Base de conocimiento del agente
+`conocimiento-agente.md` contiene todas las cifras, definiciones y hallazgos del tablero, calculados con los mismos datos que usa `index.html`. Es el documento que consulta el agente de voz (RAG) para responder solo sobre el tablero.
